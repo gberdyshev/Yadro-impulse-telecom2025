@@ -1,0 +1,43 @@
+- name: Build Docker container with script
+  hosts: host
+
+  tasks:
+    - name: Build Docker
+      shell: docker build -t my_script_telecom .
+    
+    - name: Run Docker
+      shell: docker run -d my_script_telecom
+      register: comm_result
+
+    - name: Get container ID
+      set_fact:
+        cont_id: "{{comm_result.stdout.strip()}}"
+    
+    - name: Wait container
+      shell: docker wait "{{cont_id}}"
+
+    - name: Check exit code
+      shell: docker inspect --format='{{"{{.State.ExitCode}}"}}' "{{ cont_id }}"
+      register: exit_code
+
+    - name: Get exit code
+      set_fact:
+        exit_code: "{{ exit_code.stdout.strip() }}"
+
+    - name: Get logs
+      command: docker logs {{ cont_id }}
+      register: docker_logs
+
+    - name: Print logs
+      debug:
+        var: docker_logs.stdout_lines
+
+    - name: Successful message
+      debug:
+        msg: "Скрипт выполнен успешно"
+      when: exit_code == "0"
+    
+    - name: Error message
+      debug:
+        msg: "Скрипт завершился с ошибкой"
+      when: exit_code == "1"
